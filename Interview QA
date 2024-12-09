@@ -1,0 +1,307 @@
+1. What is RxSwift, and why is it used?
+RxSwift is a reactive programming library for iOS development that allows you to work with asynchronous data streams and handle events 
+in a declarative manner.
+
+It simplifies the process of dealing with user input, network requests, and asynchronous tasks. 
+
+Key benefits:
+1. Declarative code.
+2. Composable and reusable code.
+3. Simplifies complex asynchronous workflows.
+
+
+2. What is observables and observers in RxSwift?
+Observable: Represents a stream of data or events that can be observed over time.
+Observer: Subscribes to an observable to recieve emitted data or events. 
+
+Example:
+let observable = Observable.just("Hello, Swift!")
+observable.subscribe(onNext:  { value in 
+    print(value)                           
+})
+
+Observable.just emits a single value.
+The subscribe method listens for the emitted value. 
+
+3. What are different types of Subjects in RxSwift, and when would you use them?
+Subjects are both observable and observer. 
+Types are, 
+1. Publish Subject:
+Emits events only to new subscribers. 
+Use case: Notifications or broadcasts. 
+
+let subject = PubslishSubject<String>()
+subject.onNext("Hello")
+subject.subscribe { print($0) }
+subject.onNext("World") // Emits only "World"
+
+2. Behavior Subject 
+Emits the last value to new subscribers
+Use case: Current state representation. 
+
+let subject = BehaviorSubject(value: "Initial")
+subject.onNext("Updated")
+subject.subscribe { print($0) } //Emits "Updated"
+
+3. ReplaySubjects
+- Buffers a specified number of values and replays them to new subcribers. 
+- Use case - event history. 
+
+let subject = ReplaySubject<String>.create(bufferSize: 2)
+subject.onNext("One")
+subject.onNext("Two")
+subject.subscribe { print($0) } // Emits "One" and "Two"
+
+4. AsyncSubject 
+Emits the last value once the observable completes. 
+Use case: When only the final result matters 
+
+let subject = AsyncSubject<String>()
+subject.onNext("One")
+subject.onCompleted()
+subject.subcribe { print($0) } // Emits "One"
+
+5. What are schedulers in RxSwift?
+Schedulers control the thread on which observable operations run. 
+
+Common Types:
+1. Main Scheduler : For UI Updates
+2. Concurrent Dispatch Queue Scheduler: For background tasks. 
+3. Serial Dispatch Queue Scheduler: For serial execution. 
+
+Observable.just("RxSwift")
+  .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .background))
+  .observOn(MainScheduler.instance)
+  .subscribe(onNext: { print($0) }
+
+	•	subscribeOn: Specifies the thread for observable creation.
+	•	observeOn: Specifies the thread for subscription handling.
+
+6. What is the difference between flatMap and map in RxSwift?
+  map: Transforms the emitted value
+  flatMap: Transforms the emitted value into a new observable and flattens the result. 
+
+   // map
+Observable.just(2)
+    .map { $0 * 2 }
+    .subscribe(onNext: { print($0) }) // Prints 4
+
+// flatMap
+Observable.of("Hello", "RxSwift")
+    .flatMap { Observable.just($0.uppercased()) }
+    .subscribe(onNext: { print($0) }) // Prints "HELLO", "RXSWIFT"
+
+7. How do you handle errors in RxSwift?
+   RxSwift provides operators for error handling.
+   1. catchError: Cathes and replaces the error with a new observable. 
+   2. retry: Re-subscribes to the observable after an error. 
+
+  Observable<String>.create { observer in
+    observer.onError(NSError(domain: "TestError", code: 1))
+    return Disposables.create()
+  }
+  .catchError { error in
+    Observable.just("Recovered from error")
+  }
+  .subscribe(onNext: { print($0) })
+
+8. What is disposeBag in RxSwift, and why is it important?
+  A DisposeBag is a collection of disposables that automatically handles the disposals of subscriptions. 
+  It prevents memory leaks by ensuring subscriptions are cleaned up when no longer needed. 
+
+  let disposeBag = DisposeBag()
+  Observable.just("RxSwift")
+        .subscribe(onNext: { print($0) }
+        .disposed(by: disposeBag)
+
+  Without dispose bag, you must manually manage subscription life cycle.              
+
+9. How would you implement two-way data binding using RxSwift?
+   Two-way data binding can be achieved using BehaviorRelay.
+
+  let textField = UITextField()
+  let label = UILabel()
+  let relay = BehaviorRelay<String>(value: "")
+
+  textField.rx.text.orEmpty
+    .bind(to: relay)
+    .disposed(by: disposeBag)
+
+  relay.bind(to: label.rx.text)
+    .disposed(by: disposeBag)
+
+10. What is the difference between Driver and Observable?
+   Driver:
+        Ensures work happens on the MainScheduler
+        shares subscription(no side effects)
+        Ignores error
+  Observable:
+       General-purpose reactive stream
+
+  Uses cases: Driver is preferred for UI binding to avoid thread and error handling issues.
+
+let observable = Observable.just("RxSwift")
+let driver = observable.asDriver(onErrorJustReturn: "Error")
+
+11. How would you debounce a search input using RxSwift?
+    Debouncing prevents frequent events by emitting the last event after a specified time interval.
+              
+    let searchField = UITextField()
+
+searchField.rx.text.orEmpty
+    .debounce(.milliseconds(300), scheduler: MainScheduler.instance)
+    .distinctUntilChanged()
+    .subscribe(onNext: { query in
+        print("Search: \(query)")
+    })
+    .disposed(by: disposeBag)
+
+12. How does memory management work with RxSwift?
+    RxSwift uses DisposeBag to handle memory management by disposing of subscriptions when they are no longer needed.
+
+    Key Points:
+	•	Subscriptions should always be disposed to prevent retain cycles.
+	•	Use [weak self] or [unowned self] in closures to avoid strong references.
+
+13. How would you merge multiple streams in RxSwift?
+    You can use operators like merge or combineLatest.
+   
+    let stream1 = Observable.of("A", "B")
+    let stream2 = Observable.of("1", "2")
+
+    Observable.merge(stream1, stream2)
+      .subscribe(onNext: { print($0) })
+
+    let first = Observable.of(1, 2, 3)
+  let second = Observable.of("A", "B", "C")
+
+  Observable.combineLatest(first, second) { "\($0)\($1)" }
+    .subscribe(onNext: { print($0) }) // Prints 1A, 2B, 3C
+
+14. What is distinctUntilChanged?
+    Prevents the observable from emitting the same value consecutively. 
+
+    Observable.of(1, 1, 2, 2, 3, 3)
+    .distinctUntilChanged()
+    .subscribe(onNext: { print($0) }) // Prints: 1, 2, 3
+
+15.  take and takeUntil
+    - take: Emits only the first n elements.
+	  - takeUntil: Emits until another observable emits an event.
+                   
+  Observable.of(1, 2, 3, 4, 5)
+    .take(3)
+    .subscribe(onNext: { print($0) }) // Prints: 1, 2, 3
+
+takeUntil:
+  let source = Observable.of(1, 2, 3, 4, 5)
+  let stop = Observable.just(Void()) // Signal to stop
+
+source
+    .takeUntil(stop)
+    .subscribe(onNext: { print($0) }) // Emits nothing if `stop` fires immediately
+
+   16. combineLatest
+    Combines the latest values from two or more observables whenever any observable emits a new value.
+
+    let first = Observable.of(1, 2, 3)
+    let second = Observable.of("A", "B", "C")
+
+Observable.combineLatest(first, second) { "\($0)\($1)" }
+    .subscribe(onNext: { print($0) }) // Prints: 3A, 3B, 3C
+
+
+  17. Zip 
+     Combines elements from multiple observables into tuples, emitting only when all observables emit.
+     let numbers = Observable.of(1, 2, 3)
+     let letters = Observable.of("A", "B", "C")
+
+  Observable.zip(numbers, letters) { "\($0)\($1)" }
+    .subscribe(onNext: { print($0) }) // Prints: 1A, 2B, 3C
+
+  18. merge 
+    Merges multiple observables into a single observable.
+
+    let first = Observable.of("A", "B", "C")
+    let second = Observable.of("1", "2", "3")
+
+    Observable.merge(first, second)
+      .subscribe(onNext: { print($0) }) // Prints: A, B, C, 1, 2, 3
+
+  19. switchLatest
+    Switches to the latest observable emitted by an observable of observables.
+
+    let subject1 = PublishSubject<String>()
+    let subject2 = PublishSubject<String>()
+    let subjects = BehaviorSubject(value: subject1)
+
+    subjects
+      .switchLatest()
+      .subscribe(onNext: { print($0) })
+
+    subject1.onNext("A") // Prints: A
+    subjects.onNext(subject2)
+    subject1.onNext("B") // Does not print
+    subject2.onNext("C") // Prints: C
+
+  20. reduce
+      Aggregates observable values into a single value.
+
+      Observable.of(1, 2, 3, 4, 5)
+      .reduce(0, accumulator: +)
+      .subscribe(onNext: { print($0) }) // Prints: 15
+
+  21. scan
+      Like reduce, but emits the intermediate results as well.
+
+       Observable.of(1, 2, 3, 4, 5)
+        .scan(0, accumulator: +)
+        .subscribe(onNext: { print($0) }) // Prints: 1, 3, 6, 10, 15
+
+  22. retry 
+      Retries the observable sequence on error.
+
+      var count = 0
+      let observable = Observable<Int>.create { observer in
+          count += 1
+          if count < 3 {
+            observer.onError(NSError(domain: "RetryTest", code: -1))
+          } else {
+          observer.onNext(42)
+          observer.onCompleted()
+      }
+      return Disposables.create()
+  }
+
+observable.retry(2)
+    .subscribe(onNext: { print($0) }, onError: { print("Error: \($0)") }
+ // Prints: 42
+
+23. withLatestFrom
+    Combines the latest value from another observable whenever the source emits.
+    let trigger = PublishSubject<Void>()
+    let data = BehaviorSubject(value: "Initial")
+
+    trigger.withLatestFrom(data)
+      .subscribe(onNext: { print($0) })
+
+    data.onNext("Updated")
+    trigger.onNext(()) // Prints: Updated
+
+24. deferred
+    Creates an observable dynamically upon subscription.
+  
+    let deferredObservable = Observable<String>.deferred {
+    Observable.just("Created at \(Date())")
+    }
+
+    deferredObservable.subscribe(onNext: { print($0) })
+
+25. throttle 
+    Limits the rate at which events are emitted.
+
+   let observable = PublishSubject<String>()
+   observable.throttle(.seconds(2), scheduler: MainScheduler.instance)
+      .subscribe(onNext: { print($0) })
+    observable.onNext("First") // Printed immediately
+    observable.onNext("Second") // Ignored if within 2 seconds
